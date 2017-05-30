@@ -2,8 +2,8 @@ import math
 import numpy as np
 
 
-namefile = open('names.txt', "r");
-textfile = open('book.txt', "r");
+namefile = open('eragonnames.txt', "r")
+textfile = open('eragon.txt', "r");
 
 names = [];
 
@@ -69,10 +69,10 @@ for i in range(len(indices)):
     for index in indices[i]:
         seperation += pow((index-last),2)
         last = index
-    seperation/=counts[i]
+    seperation/=(counts[i]+1)
     seperations.append(seperation)
 
-absolutes = dict(zip(names,[counts[a]/seperations[a] for a in range(len(seperations))]))
+absolutes = dict(zip(names,[counts[a]/(seperations[a]+1) for a in range(len(seperations))]))
 
 
 #total score by division
@@ -92,7 +92,7 @@ for n1 in range(len(indices)):
                 for itt in range(len(indices[n2])):
                     d = abs(index - indices[n2][itt])
                     if d < size:
-                        diff += 1/d
+                        diff += 1/(d+1)
         df.append(diff)
     relations.append(dict(zip(names[n1+1:], df)))
 
