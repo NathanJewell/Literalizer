@@ -1,14 +1,9 @@
 import math
-import plotly.plotly as py
-import plotly as ploty
-ploty.tools.set_credentials_file(username='ncjewell', api_key='jI34UQmdCtM4pY3cOxBA')
-import plotly.graph_objs as go
 import numpy as np
 
 
 namefile = open('names.txt', "r");
 textfile = open('book.txt', "r");
-webf = open('web.txt', "w");
 
 names = [];
 
@@ -20,13 +15,9 @@ names = [];
 #
 #
 
-web = dict() 	#name1,name2 : seperations
-ind = dict()
-
 for name in namefile:
 	names.append(name.strip("\n"));
 
-print(names)
 text = [word for line in textfile for word in line.split()]
 
 
@@ -45,55 +36,79 @@ def check(arr, word):
 			return True
 	return False
 
-for n in names:
-	name = n.split(",")
-	seperations = []
-	indices = []
-	#finding first instance of either word
-	for it in range(len(text)):
-		if check(name[0],text[it]):
-			current = name[1]
-			break
-		elif check(name[1],text[it]):
-			current = name[0]
-			break
-		this = it;
-	#iterating through all words
-	for it in range(len(text)):	
-		if check(current,text[it]):
-			current = switch(current, name[0], name[1]);
-			last = this
-			this = it
-			seperations.append(this-last);	#adding difference between indices
-			indices.append(it)
+def scrapeText(w, t):   #word can be colon seperated list of words
+    indices = []
+    for it in range(len(t)):
+        if check(w, t[it]):
+            indices.append(it)
+    return indices
+#character importance over time
 
-	web[name[0][0]+","+name[1][0]] = seperations
-	ind[name[0][0]+","+name[1][0]] = indices
+#i think N^2 complexity rn so probs < 10 names ideally
 
-print(web)
-print(len(text))
+#rank absolute importance of characters
+    #total number of name instances
+    #seperation of name instances
+#map the importance of characters relative to one another
+    #proximity of name instances
 
-traces = [];
+#scraping for all indices of all names
+indices = []
+for n1 in names:
+    indices.append(scrapeText(n1, text))
 
-for key in web:
-	traces.append(go.Histogram(
-		x = ind[key],
-		y = web[key],
-		#mode = 'lines',
-		opacity = .7,
-		name = key
-	))
 
-layout = go.Layout( 
-	barmode = 'overlay'
-)
+counts = [len(indices[a])*1000 for a in range(len(indices))]  #total count of that name in text --- larger is better
+#seperation can just be average distance between -- smaller is better
+#non-linear because otherwise it would just equal the total length of text
+#punishing larger distances and rewarding smaller distances
+seperations = []
+for i in range(len(indices)):
+    last = 0;
+    seperation = 0;
+    for index in indices[i]:
+        seperation += pow((index-last),2)
+        last = index
+    seperation/=counts[i]
+    seperations.append(seperation)
 
-fig = go.Figure(data=traces, layout=layout);
+absolutes = dict(zip(names,[counts[a]/seperations[a] for a in range(len(seperations))]))
 
-py.plot(fig, filename='ifobPLOT')
 
-def connectionstrength(seperations):
-	print("nothing")
-	#sort
-	#remove outliers
-	#find mean, Sx
+#total score by division
+# seperation was allready divided by counts but that was not really applying the filter just accounting for natural reason
+
+#relative importance of characters
+#proximity search size
+size = 1500  #how many words to look from center
+relations = [] #scalar summative difference higher is better
+for n1 in range(len(indices)):
+    df = []
+    for n2 in range(n1+1, len(indices)):    #adding +1 here is optimization because the first will always be the same as the one it is checking against
+        diff = 0
+        if n1 != n2:
+            for it in range(len(indices[n1])):
+                index = indices[n1][it]
+                for itt in range(len(indices[n2])):
+                    d = abs(index - indices[n2][itt])
+                    if d < size:
+                        diff += 1/d
+        df.append(diff)
+    relations.append(dict(zip(names[n1+1:], df)))
+
+relations = dict(zip(names,relations))
+                    #need to optimize for skipping the extras really badly
+
+#writing to file now
+web = open('web.txt', "w");
+
+for n, v in absolutes.items():
+    web.write(n + "," + str(v)+"\n")
+
+web.write("RELATIONING\n")    #tells visualizer to switch reading modes
+
+for n1, dic in relations.items():
+    for n2, v in dic.items():
+        web.write(n1+","+n2+","+str(v)+"\n")
+
+web.close()
